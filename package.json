@@ -1,0 +1,55 @@
+{
+  "name": "dsh-senior-adviser",
+  "version": "1.2.0",
+  "description": "上级顾问 / Senior adviser: a BLOCKING one-shot LLM consult as a DSH tool. Not an agent, not a subagent, not an MCP server — the model has no tools at all. ask_senior sends the problem, the adviser answers aligning (ask back) or guiding (advise); turn_kind=report makes it grade the previous guidance before giving the next round.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "test"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "keywords": [
+    "dsh",
+    "cordis",
+    "plugin",
+    "llm",
+    "consult",
+    "adviser",
+    "blocking",
+    "tool"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/dsh-llm": "*"
+  },
+  "engines": {
+    "node": ">=18",
+    "dsh": ">=0.2.1-rc.1"
+  }
+}

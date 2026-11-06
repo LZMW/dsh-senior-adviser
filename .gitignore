@@ -1,0 +1,5 @@
+# junction to the local DSH profile's node_modules (do NOT publish)
+node_modules/
+
+# isolated verification profiles & session logs (see scripts/run-advtest.ps1)
+.dsh-advtest/
