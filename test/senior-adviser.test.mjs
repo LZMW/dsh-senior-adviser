@@ -144,7 +144,7 @@ function loadTool(host, config = {}) {
 
 test('plugin exports the Cordis function-plugin shape', () => {
   assert.equal(name, 'dsh-senior-adviser')
-  assert.deepEqual([...inject], ['llm', 'tools', 'attachments', 'fs'])
+  assert.deepEqual([...inject], ['llm', 'tools'], 'only hard dependencies: a session-scoped fs would stall a root plugin')
   assert.equal(typeof apply, 'function')
   assert.equal(typeof Config, 'function', 'schemastery schemas are callable')
 })
@@ -520,4 +520,5 @@ test('every result shape satisfies the declared output schema', async () => {
     assert.equal(typeof value.status, 'string')
   }
 })
+
 

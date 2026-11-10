@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-senior-adviser — host (Node) half type surface.
  *
  * The plugin is a Cordis function plugin: `{ name, inject, Config, apply }`.
@@ -128,7 +128,7 @@ export interface SeniorAdviserConfig {
 /** Plugin name registered with the Loader. */
 export declare const name: 'dsh-senior-adviser'
 /** Required Cordis services. */
-export declare const inject: readonly ['llm', 'tools', 'attachments', 'fs']
+export declare const inject: readonly ['llm', 'tools']
 /** Config schema (schemastery). */
 export declare const Config: Schema<SeniorAdviserConfig>
 /**
@@ -139,3 +139,4 @@ export declare const Config: Schema<SeniorAdviserConfig>
 export declare function apply(ctx: Context, config: SeniorAdviserConfig): void
 
 export {}
+
