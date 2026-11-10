@@ -1,4 +1,4 @@
-﻿# dsh-senior-adviser（上级顾问）
+# dsh-senior-adviser（上级顾问）
 
 一个 **DSH 插件**：把"向远程大模型请教"做成**一次阻塞的 LLM 对话**。
 

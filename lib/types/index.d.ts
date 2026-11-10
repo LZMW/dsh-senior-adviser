@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-senior-adviser — host (Node) half type surface.
  *
  * The plugin is a Cordis function plugin: `{ name, inject, Config, apply }`.

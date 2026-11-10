@@ -1,4 +1,4 @@
-﻿// Offline test suite: no host, no network, no model.
+// Offline test suite: no host, no network, no model.
 //
 // It covers exactly the structural claims the plugin makes:
 //   * the request options never carry `tools`,
