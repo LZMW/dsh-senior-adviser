@@ -1,4 +1,4 @@
-# dsh-senior-adviser（上级顾问）
+﻿# dsh-senior-adviser（上级顾问）
 
 一个 **DSH 插件**：把"向远程大模型请教"做成**一次阻塞的 LLM 对话**。
 
@@ -66,7 +66,8 @@ Copy-Item L:\超级工作间\dsh-senior-adviser C:\Users\29493\.dsh\profiles\des
 ask_senior(
   turn_kind: 'ask' | 'report',     # 枚举，必填；非法值在进 execute 之前被参数校验拒绝
   problem?:   string,              # ask 用
-  attempted?: { actions[], result, new_error?, feedback? }   # report 用
+  attempted?: { actions[], result, new_error?, feedback? },  # report 用
+  attachments?: string[]           # 可选：本地图片绝对路径，插件读取后随请求发送
 )
 ```
 
@@ -94,11 +95,18 @@ ask_senior(
 不存在"把文件发给模型"的通道。文件到达模型的唯一形态是 dsh-llm `projectFilesToText` 渲染的
 「名称+字节+sha256+只读路径」文本行。因此本插件对两种附件的处理是：
 
-| 附件 | 处理 | 到达顾问的形态 |
+| 来源 | 处理 | 到达顾问的形态 |
 |---|---|---|
-| 图片（未卸载） | **原样复制** image 块进请求 | 支持看图的模型收到 base64 内联图；纯文本模型由适配器降级为占位符 |
-| 图片（宿主已卸载） | 渲染占位符 | `[图片已因请求上限被省略：…]` |
+| **`attachments` 参数**（本地 AI 主动指定路径） | 插件用 `node:fs` 读字节 → `attachments.saveImages()` 入库归一化 | 真 image 块，顾问直接看图 |
+| 会话历史图片（未卸载） | **原样复制** image 块进请求 | 支持看图的模型收到 base64 内联图；纯文本模型由适配器降级为占位符 |
+| 会话历史图片（宿主已卸载） | 渲染占位符 | `[图片已因请求上限被省略：…]` |
 | 文件 | 渲染信息行 + 提示顾问可点名索取内容 | `[文件 "名" (N bytes)，只读副本："路径"]` |
+
+**为什么 `attachments` 参数是必要的**：顾问没有工具，看不见任何本地文件。会话历史里的图片只在"用户刚好在聊天里贴过图"时存在；
+本地 AI 自己生成的截图/渲染图（如 Puppeteer 截图、生成的图表）无法进入顾问视野。`attachments` 让本地 AI 主动把
+任意本地图片路径交给顾问，走的是与浏览器上传完全相同的附件入库路径（`saveImages` 归一化 + 内容寻址）。
+
+非图片路径（pdf/docx/…）不会被发送——宿主协议层没有文件通道，会以一行提示出现在提示词里。
 
 图片上限由宿主管：默认 20MiB base64 / 请求、单图归一化目标约 1MiB / 2048px（`DEFAULT_MAX_REQUEST_IMAGE_BYTES` 等）。
 
@@ -113,10 +121,10 @@ ask_senior(
 ## 验证
 
 ```powershell
-# 一条命令：离线结构 + 行为（25 个用例，真 BlockAssembler / 真 validateJsonSchemaValue）
+# 一条命令：离线结构 + 行为（28 个用例，真 BlockAssembler / 真 validateJsonSchemaValue）
 cd L:\超级工作间\dsh-senior-adviser
 node --test test/senior-adviser.test.mjs
-# 预期：tests 25 / pass 25 / fail 0
+# 预期：tests 28 / pass 28 / fail 0
 ```
 
 > 仓库里的 `node_modules` 是指向 `C:\Users\29493\.dsh\profiles\node_modules` 的 junction
@@ -159,9 +167,11 @@ desktop 侧自查（重启之后）：
 lib/index.js          宿主面：Config + apply + ask_senior（唯一一处 ctx.llm.stream）
 lib/client.js         浏览器面：settings.plugins.tab 里的「上级顾问」卡片
 lib/types/*.d.ts      两面类型
-test/                 25 个离线用例（node --test test/senior-adviser.test.mjs）
+test/                 28 个离线用例（node --test test/senior-adviser.test.mjs）
 scripts/              隔离 profile 启动器 + 会话日志分析器
 00-取证.md            源码取证与 U1–U5
 01-设计提取.md        5 条设计结论核对 + 开发 profile 选择
 02-验收报告.md        21 条断言逐条命令与输出
 ```
+
+

@@ -1,4 +1,4 @@
-// Offline test suite: no host, no network, no model.
+﻿// Offline test suite: no host, no network, no model.
 //
 // It covers exactly the structural claims the plugin makes:
 //   * the request options never carry `tools`,
@@ -10,6 +10,7 @@
 //   * the report round carries the previous guidance verbatim.
 
 import assert from 'node:assert/strict'
+import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools'
 import { Config, __internals, apply, inject, name } from '../lib/index.js'
@@ -398,6 +399,68 @@ test('consult request carries history images verbatim and the file info section'
   assert.match(prompt, /本地 AI 负责读取转述/)
 })
 
+// ── caller-supplied images (v1.3.0) ────────────────────────────────────────
+
+test('attachments argument is declared as an array of strings', () => {
+  const tool = loadTool(fakeHost('{}'))
+  const schema = tool.parameters.properties.attachments
+  assert.ok(schema !== undefined, 'attachments parameter declared')
+  assert.equal(schema.type, 'array')
+  assert.equal(schema.items.type, 'string')
+  assert.deepEqual(validateJsonSchemaValue(tool.parameters, { turn_kind: 'ask', problem: 'x', attachments: ['a.png'] }), [])
+  assert.ok(validateJsonSchemaValue(tool.parameters, { turn_kind: 'ask', problem: 'x', attachments: 'a.png' }).length > 0)
+})
+
+test('caller image paths are read, stored, and placed in the request', async () => {
+  const stored = []
+  const host = fakeHost(enc(guiding))
+  host.ctx.get = (name) => {
+    if (name === 'attachments') {
+      return {
+        saveImages: async (inputs) => {
+          stored.push(...inputs)
+          return inputs.map((input, index) => ({
+            attachmentId: 'sha256:stored' + index,
+            name: input.name,
+            width: 64,
+            height: 64,
+            mediaType: input.mediaType
+          }))
+        }
+      }
+    }
+    if (name === 'fs') return { processPathFromHostPath: (p) => p }
+    return undefined
+  }
+  const tool = loadTool(host, { provider: 'zhipu', model: 'glm-4.7' })
+  const pngPath = fileURLToPath(new URL('./fixtures/pixel.png', import.meta.url))
+  const value = await tool.execute({ turn_kind: 'ask', problem: '看图', attachments: [pngPath] }, fakeExec())
+
+  assert.equal(value.status, 'guiding')
+  assert.equal(stored.length, 1, 'one image committed through the attachment store')
+  assert.equal(stored[0].mediaType, 'image/png')
+  assert.ok(stored[0].data instanceof Uint8Array && stored[0].data.length > 0, 'real bytes were read')
+  const images = host.calls[0].messages[0].content.filter((block) => block.type === 'image')
+  assert.equal(images.length, 1)
+  assert.equal(images[0].attachment.attachmentId, 'sha256:stored0')
+})
+
+test('unsupported or unreadable caller paths degrade to a prompt note, not an error', async () => {
+  const host = fakeHost(enc(guiding))
+  host.ctx.get = (name) => (name === 'attachments' ? { saveImages: async () => [] } : undefined)
+  const tool = loadTool(host, { provider: 'zhipu', model: 'glm-4.7' })
+  const value = await tool.execute(
+    { turn_kind: 'ask', problem: '看图', attachments: ['C:\\nope\\missing.png', 'C:\\nope\\report.pdf'] },
+    fakeExec()
+  )
+  assert.equal(value.status, 'guiding', 'the consult still runs')
+  const prompt = host.calls[0].messages[0].content[0].text
+  assert.match(prompt, /【本地 AI 附带的图片未能发送】/)
+  assert.match(prompt, /不是支持的图片格式/)
+  assert.match(prompt, /读取/)
+  assert.equal(host.calls[0].messages[0].content.filter((b) => b.type === 'image').length, 0)
+})
+
 test('scanSession counts consults and recovers the last guidance', () => {
   const state = scanSession(
     fakeSession([
@@ -457,3 +520,4 @@ test('every result shape satisfies the declared output schema', async () => {
     assert.equal(typeof value.status, 'string')
   }
 })
+

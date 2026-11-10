@@ -18,6 +18,27 @@ export interface SeniorAdviserCodeChange {
   new?: string
 }
 
+/** Arguments accepted by `ask_senior`. */
+export interface SeniorAdviserArguments {
+  turn_kind: 'ask' | 'report'
+  /** Required for `ask`: the phenomenon, error text, and what was already tried. */
+  problem?: string
+  /** Required for `report`: what was done after the previous guidance. */
+  attempted?: {
+    actions?: string[]
+    result?: string
+    new_error?: string
+    feedback?: string
+  }
+  /**
+   * Optional absolute paths of local images (png/jpg/jpeg/webp/gif) to send
+   * with the consult. The plugin reads the bytes and commits them through the
+   * host attachment store, so the adviser receives real image blocks. This is
+   * the only way a tool-less consultant can be shown a screenshot.
+   */
+  attachments?: string[]
+}
+
 /** Token accounting echoed from the assembled stream (host-owned numbers). */
 export interface SeniorAdviserUsage {
   inputTokens?: number
