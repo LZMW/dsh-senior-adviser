@@ -110,6 +110,28 @@ ask_senior(
 
 图片上限由宿主管：默认 20MiB base64 / 请求、单图归一化目标约 1MiB / 2048px（`DEFAULT_MAX_REQUEST_IMAGE_BYTES` 等）。
 
+### 路由前提：顾问模型必须声明接受图像输入
+
+图片能否真正到达顾问，**不取决于本插件，取决于顾问路由的模型能力声明**：
+
+| 路由的模型条目写法 | 宿主判定 | 结果 |
+|---|---|---|
+| `input: [text, image]`（如 `opencode-go/deepseek-v4.1-flash`） | 多模态 | 顾问看到图 |
+| 只有 `supportsImages: true`（workbuddy 插件自有字段，宿主不读） | 取决于 `imageModelIds` / 白名单 | 未命中 → 占位符（见下） |
+
+替换由 dsh-llm 的 `textOnlyImageText()` 完成，发生在**请求组装之后**——插件这一侧完全看不出失败，
+本地 AI 只会收到一条"看起来很正常的顾问回复"。降级的唯一特征是顾问回复里出现：
+
+```
+[image omitted because this model accepts text only; attachment sha256:xxxxxxxx]
+```
+
+- **已验证组合**：`opencode-go` / `deepseek-v4.1-flash` / 推理等级「模型默认」
+- **workbuddy 路由不是"全系纯文本"**：它的模态由两处**取并集**决定——`regions.<区>.imageModelIds`（设置里的图像勾选框）∪ 硬编码白名单 `NATIVE_MODALITY_BY_MODEL_ID`（精确 id 匹配，不继承家族名）。命中任一处 → 宿主收到 `inputModalities: ['text','image']`；都不命中 → `['text']`，图片被换成占位符。白名单里明确多模态的 id：`deepseek-v4.1-flash`、`glm-5.3-flash`、`glm-5v-turbo`、`kimi-k2.6`、`kimi-k2.7`、`kimi-k3-1`、`minimax-m3`、`minimax-m3.1-flash`、`space-bunny`
+- **注意 `deepseek-v4.1-flash-sg` 是另一个 id**（国际版付费孪生）：不在白名单、也不在 `imageModelIds` 里 → 纯文本。本次踩的就是它；想在 workbuddy 上用它看图，去插件设置里勾上它的图像框即可（勾选优先于白名单）
+- 平台字段 `supportsImages: true` **不是**宿主认多模态的依据，它只喂插件自己的选择器与"刷新时预勾选哪些"的默认逻辑
+- 推理等级也要落在模型的 `supportedEfforts` 内，否则本地预检就报 `provider … does not support reasoning effort "xhigh"`；选「模型默认」最稳
+
 ## 不自己算 token
 
 原项目手写 token 预算在 143K–168K 区间 100% 丢上下文，根因是**自己算 token**。本插件的约束：
@@ -153,6 +175,21 @@ desktop 侧自查（重启之后）：
 新会话里让它调一次 ask_senior
 %USERPROFILE%\.dsh\sessions\...\session.v4.jsonl.zstd 里应能看到 ask_senior 在工具列表首位
 ```
+
+### DSH 0.2.2-rc.1 实测（2026-11-12）
+
+本插件依赖的四条宿主契约在 0.2.2 上逐条复核，**全部不变**：
+
+| 契约 | 0.2.2 状态 |
+|---|---|
+| `ctx.llm.stream(options)` 不带 `tools` = 模型没有手 | 不变 |
+| `GenerateOptions.signal` 接 `exec.signal`（用户点停止可中止） | 不变 |
+| `defineTool` 的 `parameters.<field>.enum` 在进 execute 前校验 | 不变 |
+| 设置字段必须 `.volatile()`，否则 `describe()` 不返回该条目 | 不变（`dsh-settings` 两版 `volatile` ×6 / `describe(` ×4 计数一致） |
+
+**行为级实测**：真机调用一次 `ask_senior`（`turn_kind=ask`），返回 `status:guiding`
+含有效分析文本，路由 `workbuddy/kimi-k3-1`，usage 26,415 tokens 正常回显。
+自带 `test/senior-adviser.test.mjs` 28/28 全过。
 
 ## 已知限制
 
