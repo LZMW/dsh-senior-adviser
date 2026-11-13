@@ -43,7 +43,7 @@ Copy-Item L:\超级工作间\dsh-senior-adviser C:\Users\29493\.dsh\profiles\des
 
 ## 设置
 
-**设置 → 内置插件 → 「上级顾问」**
+**左侧栏「自制插件」入口 → 面板底部的「上级顾问设置」卡**（2026-11-13 起从「设置 → 内置插件」迁到这里；需要同时安装 [dsh-plugin-hub](https://github.com/LZMW/dsh-plugin-hub)）
 
 | 字段 | 类型 | 来源 / 默认 |
 |---|---|---|
@@ -159,7 +159,7 @@ node --test test/senior-adviser.test.mjs
 # 一次性 agent 面：跑一次真实咨询并落会话日志
 .\scripts\run-advtest.ps1 -Profile advheadless -Task "调用 ask_senior，turn_kind='ask'，problem='…'"
 
-# Web 面：起设置页（端口 59988），看「设置 → 内置插件 → 上级顾问」
+# Web 面：起设置页（端口 59988），看左侧栏「自制插件」面板里的「上级顾问设置」卡
 .\scripts\run-advtest.ps1 -Profile advtest -Web -Port 59988
 
 # 把会话日志变成断言用的事实（request/header 计数、call→result 间隔、route、status）
@@ -171,7 +171,7 @@ node scripts\analyze-session.mjs "L:\超级工作间\.dsh-advtest\sessions\<work
 desktop 侧自查（重启之后）：
 
 ```
-设置 → 内置插件 → 上级顾问 → 选 provider/model
+左侧栏「自制插件」→「上级顾问设置」→ 选 provider/model
 新会话里让它调一次 ask_senior
 %USERPROFILE%\.dsh\sessions\...\session.v4.jsonl.zstd 里应能看到 ask_senior 在工具列表首位
 ```
@@ -202,7 +202,7 @@ desktop 侧自查（重启之后）：
 
 ```
 lib/index.js          宿主面：Config + apply + ask_senior（唯一一处 ctx.llm.stream）
-lib/client.js         浏览器面：settings.plugins.tab 里的「上级顾问」卡片
+lib/client.js         浏览器面：注册进 dsh-plugin-hub 的 plugin-hub.sections 子 slot（「上级顾问设置」卡）
 lib/types/*.d.ts      两面类型
 test/                 28 个离线用例（node --test test/senior-adviser.test.mjs）
 scripts/              隔离 profile 启动器 + 会话日志分析器
